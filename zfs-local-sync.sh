@@ -61,13 +61,13 @@ Run() {
 	if $dryRun; then
 		printf "$command\n"
 	else
+		printf "$command\n" >> $logFile
 		if $verbose; then
 			printf "$command\n"
 			command="$command 2>&1 | tee -a $logFile"
 		else
 			command="$command >> $logFile 2>&1"
 		fi
-		printf "$command\n" >> $logFile
 		eval $command
 	fi
 }
