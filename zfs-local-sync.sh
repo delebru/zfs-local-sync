@@ -166,7 +166,7 @@ PurgeSnapshots() {
 	dataset=$2
 	existingSnapshots=`echo $snapshots | tr "[:space:]" "\n" | grep $dataset | grep zfs-local-sync | tr "\n" " " | awk -F"@" '{print NF-1}'`
 	if [ $existingSnapshots -gt $snapshotsToKeep ]; then
-		toDelete=`echo $snapshots | tr "[:space:]" "\n" | grep $dataset | grep -m$((existingSnapshots-snapshotsToKeep)) ""`
+		toDelete=`echo $snapshots | tr "[:space:]" "\n" | grep $dataset | grep zfs-local-sync | grep -m$((existingSnapshots-snapshotsToKeep)) ""`
 		for snapshot in $toDelete; do
 			if [[ $snapshot == *"@"* ]]; then
 				Run "zfs destroy $snapshot"
