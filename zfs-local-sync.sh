@@ -190,7 +190,7 @@ done
 GetLatestSnapshot() {
 	snapshots=$1
 	dataset=$2
-	echo $snapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" " "
+	echo $snapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" ""
 }
 
 IsDatasetFirstRun() {
