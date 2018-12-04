@@ -3,10 +3,26 @@
 ## Default settings
 dryRun=false
 verbose=false
+silent=false
 snapshotsToKeep=10
 
 Usage() { 
-	printf "\nUsage: $0 [parameters]\n\nRequired parameters:\n-s | --source => Name of source ZFS pool.\n-d | --destination => Name of ZFS pool to use as backup.\n\nOptional parameters:\n-D | --dry-run => Test run. Will output commands to console but won't do anything.\n-v | --verbose => Output to console and log file.\n-k | --keep-snapshots => Number of snapshots to keep. Default: $snapshotsToKeep Minimum: 1\n-vols | --datasets => Limits the sync to only the specified dataset(s). Must enter value(s) between quotes (and separated with spaces). Example: --datasets \"vm-1-disk-0 vm-1-disk-1\"\n\nExample: $0 -s source-pool -d dest-pool\n" 1>&2
+	printf "
+Usage: $0 [parameters]
+
+Required parameters:
+-s | --source => Name of source ZFS pool.
+-d | --destination => Name of ZFS pool to use as backup.
+
+Optional parameters:
+-D | --dry-run => Test run: outputs commands to console but won't run. (overrides silent and verbose modes)
+-S | --silent => Silent mode: only errors and warnings will be loged.
+-v | --verbose => Verbose mode: sends output also to console. (overrides silent mode)
+-k | --keep-snapshots => Number of snapshots to keep. Default: $snapshotsToKeep Minimum: 1
+-vols | --datasets => Limits the sync to only the specified dataset(s). Must enter value(s) between quotes (and separated with spaces). Example: --datasets \"vm-1-disk-0 vm-1-disk-1\"
+	
+Example: $0 -s source-pool -d dest-pool
+" 1>&2
 }
 
 ExitError() {
@@ -30,6 +46,7 @@ while [ "$1" != "" ]; do
 						destPool=$1;;
 		#optional parameters
 		-D | --dry-run ) dryRun=true;;
+		-S | --silent ) silent=true;;
 		-v | --verbose ) verbose=true;;
 		-k | --keep-snapshots ) shift
 						snapshotsToKeep=$1;;
@@ -48,6 +65,11 @@ if [ -z "$sourcePool" ] || [ -z "$destPool" ]; then
 	ExitError
 fi
 
+## Set common variables
+currentTime=`date +"%Y-%m-%d_%H-%M-%S"` # used for naming snapshots and log messages
+startTime=`date +%s` # used for script runtime calculation
+syncId="_localsync_$(printf "$sourcePool$destPool" | md5sum | cut -f1 -d' ' | cut -c1-8)_"
+
 ## Set log file
 logDir="/var/log/zfs-local-sync"
 logFile="$logDir/$sourcePool.log"
@@ -55,38 +77,74 @@ if [ ! -d "$logDir" ]; then
   mkdir -p $logDir
 fi
 
-## Define Run and Log functions
+## Define Run, Log and Warn functions
 Run() {
 	command=$1
 	if $dryRun; then
+		# only print command to console but don't run
 		printf "$command\n"
 	else
-		printf "$command\n" >> $logFile
+		if ! $silent; then
+			# send command to log file
+			printf "$command\n" >> $logFile
+		fi
 		if $verbose; then
+			# send command to console, outputs to console and log file
 			printf "$command\n"
 			command="$command 2>&1 | tee -a $logFile"
 		else
+			# send outputs only to log file
 			command="$command >> $logFile 2>&1"
 		fi
+		# run command
 		eval $command
 	fi
 }
 
 Log() {
-	value=$1
+	message="### $1"
 	if $dryRun; then
-		printf "$value\n"
+		# only print to console
+		printf "$message\n"
 	else
 		if $verbose; then
-			printf "$value\n"
+			# print to console
+			printf "$message\n"
 		fi
-		printf "$value\n" >> $logFile
+		if ! $silent; then
+			# send to log file
+			printf "$message\n" >> $logFile
+		fi
 	fi
 }
 
+Warn() {
+	message="###** WARNING! **### $1"
+	if $dryRun; then
+		# only print to console
+		printf "$message\n"
+	else
+		# send to log file
+		printf "$message\n" >> $logFile
+		if $verbose; then
+			# print to console
+			printf "$message\n"
+		fi
+	fi
+}
+
+## Check for conflicting run modes
+if ( $dryRun && $silent ) || ( $dryRun && $verbose ); then
+	Log "Dry run was requested: silent or verbose modes will be ignored."
+elif $verbose && $silent; then
+	verbose=true
+	silent=false
+	Warn "Conflicting modes detected! Verbose overrides silent."
+fi
+
 ## Check parameters for unacceptable values
 if [ $snapshotsToKeep -lt 1 ]; then
-	Log "Warning! snapshotsToKeep is set to an invalid value: $snapshotsToKeep\nMinimum: 1, default: 10.\nExiting..."
+	Warn "snapshotsToKeep is set to an invalid value: $snapshotsToKeep\nMinimum: 1, default: 10.\nExiting..."
 	exit 2
 fi
 
@@ -95,13 +153,12 @@ pidFile=/var/run/zfs-local-sync_$sourcePool.pid
 if [ -f $pidFile ]; then
 	pid=`cat $pidFile`
 	processInfo=`ps -ef | grep $pid | grep -v grep`
-	currentTime=`date +"%Y-%m-%d %H:%M:%S"`
 	if [[ -z "${processInfo// }" ]]; then
-		Log "### A lock file was found: $pidFile, but no process exists with the specified PID: $pid."
-		Log "### Deleting lock file and continuing with sync. $currentTime"
+		Warn "A lock file was found: $pidFile, but no process exists with the specified PID: $pid."
+		Warn "Deleting lock file and continuing with sync @ $currentTime"
 	else
-		Log "### Another sync task is running for the specified pool: $sourcePool\n### PID: $pid"
-		Log "### Exiting script... $currentTime"
+		Log "Another sync task is running for the specified pool: $sourcePool\n### PID: $pid"
+		Log "Exiting script... $currentTime"
 		exit
 	fi
 fi
@@ -109,12 +166,10 @@ trap "rm -f -- '$pidFile'" EXIT
 echo $$ > "$pidFile"
 
 ## Begin script
-startTime=`date +%s`
-syncId="_localsync_$(printf "$sourcePool$destPool" | md5sum | cut -f1 -d' ' | cut -c1-8)_"
-Log "######### Beginning pool sync..."
+Log "Beginning pool sync @ $currentTime"
 
 if $dryRun; then
-	Log "## This is a dry run! No pool will be modified."
+	Log "This is a dry run! No pool will be modified."
 fi
 
 ## If no datasets were specified, get all existing datasets on source pool
@@ -127,7 +182,6 @@ sourceSnapshots=`zfs list -t snapshot | grep $sourcePool/ | grep $syncId | awk '
 destSnapshots=`zfs list -t snapshot | grep $destPool/ | grep $syncId | awk '{print $1}'`
 
 ## Create snapshots on source pool to be sent
-currentTime=`date +"%Y-%m-%d_%H-%M-%S"`
 for dataset in $datasets; do
 	Run "zfs snapshot $sourcePool/$dataset@$syncId$currentTime"
 done
@@ -154,7 +208,7 @@ for dataset in $datasets; do
 	if [[ $dataset == *"swap"* ]]; then
 		Log "Ignoring dataset: $dataset"
 	elif IsDatasetFirstRun $dataset; then
-		Log "## No previous snapshots were found for the dataset $dataset. Executing first run."
+		Log "No previous snapshots were found for the dataset $dataset. Executing first run."
 		Run "zfs send $sourcePool/$dataset@$syncId$currentTime | zfs receive $destPool/$dataset"
 	else
 		latestSnapshotOnSource=$(GetLatestSnapshot "$sourceSnapshots" $dataset)
@@ -173,7 +227,7 @@ PurgeSnapshots() {
 			if [[ $snapshot == *"@"* ]]; then
 				Run "zfs destroy $snapshot"
 			else
-				Log "########### WARNING! #############\nScript may be attempting to delete a dataset instead of a snapshot!\nCommand received: \"zfs destroy $snapshot\"\n#################"
+				Warn "\n*** Script may be attempting to delete a dataset instead of a snapshot! ***\n*** Command received: \"zfs destroy $snapshot\" ***\n*** Command skipped. ***\n#################"
 			fi
 		done
 	fi
@@ -218,4 +272,4 @@ HumanizeSeconds() {
 }
 
 runTime=`HumanizeSeconds $((finishTime-startTime))`
-Log "##### Done in: $runTime"
+Log "Done in: $runTime"
