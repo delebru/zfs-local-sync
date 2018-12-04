@@ -110,6 +110,7 @@ echo $$ > "$pidFile"
 
 ## Begin script
 startTime=`date +%s`
+syncId="localsync_$(printf "$sourcePool$destPool" | md5sum | cut -f1 -d' ' | cut -c1-8)"
 Log "######### Beginning pool sync..."
 
 if $dryRun; then
@@ -122,13 +123,13 @@ if [ -z $datasets ]; then
 fi
 
 # Get all existing snapshots on source and destination pools
-sourceSnapshots=`zfs list -t snapshot | grep $sourcePool/ | grep zfs-local-sync | awk '{print $1}'`
-destSnapshots=`zfs list -t snapshot | grep $destPool/ | grep zfs-local-sync | awk '{print $1}'`
+sourceSnapshots=`zfs list -t snapshot | grep $sourcePool/ | grep $syncId | awk '{print $1}'`
+destSnapshots=`zfs list -t snapshot | grep $destPool/ | grep $syncId | awk '{print $1}'`
 
 ## Create snapshots on source pool to be sent
 currentTime=`date +"%Y-%m-%d_%H-%M-%S"`
 for dataset in $datasets; do
-	Run "zfs snapshot $sourcePool/$dataset@_zfs-local-sync_$currentTime"
+	Run "zfs snapshot $sourcePool/$dataset@_$syncId_$currentTime"
 done
 
 ## Auxiliary functions
@@ -153,10 +154,10 @@ for dataset in $datasets; do
 		Log "Ignoring dataset: $dataset"
 	elif IsDatasetFirstRun $dataset; then
 		Log "## No previous snapshots were found for the dataset $dataset. Executing first run."
-		Run "zfs send $sourcePool/$dataset@_zfs-local-sync_$currentTime | zfs receive $destPool/$dataset"
+		Run "zfs send $sourcePool/$dataset@_$syncId_$currentTime | zfs receive $destPool/$dataset"
 	else
 		latestSnapshot=$(GetLatestSnapshot $dataset)
-		Run "zfs send -I $latestSnapshot $sourcePool/$dataset@_zfs-local-sync_$currentTime | zfs receive $destPool/$dataset"
+		Run "zfs send -I $latestSnapshot $sourcePool/$dataset@_$syncId_$currentTime | zfs receive $destPool/$dataset"
 	fi
 done
 
