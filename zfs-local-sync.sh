@@ -133,6 +133,15 @@ Warn() {
 	fi
 }
 
+## Check for conflicting run modes
+if ( $dryRun && $silent ) || ( $dryRun && $verbose ); then
+	Log "Dry run was requested: silent or verbose modes will be ignored."
+elif $verbose && $silent; then
+	verbose=true
+	silent=false
+	Warn "Conflicting modes detected! Verbose overrides silent."
+fi
+
 ## Check parameters for unacceptable values
 if [ $snapshotsToKeep -lt 1 ]; then
 	Warn "snapshotsToKeep is set to an invalid value: $snapshotsToKeep\nMinimum: 1, default: 10.\nExiting..."
