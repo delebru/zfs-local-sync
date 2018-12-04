@@ -134,7 +134,7 @@ done
 ## Auxiliary functions
 GetLatestSnapshot() {
 	dataset=$1
-	echo $sourceSnapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" " "
+	echo $destSnapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" " "
 }
 
 IsDatasetFirstRun() {
