@@ -134,14 +134,15 @@ done
 
 ## Auxiliary functions
 GetLatestSnapshot() {
-	dataset=$1
-	echo $destSnapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" " "
+	snapshots=$1
+	dataset=$2
+	echo $snapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" " "
 }
 
 IsDatasetFirstRun() {
 	dataset=$1
-	latestSnapshot=$(GetLatestSnapshot $dataset)
-	if [[ -z "${latestSnapshot// }" ]]; then
+	latestSnapshotOnDest=$(GetLatestSnapshot "$destSnapshots" $dataset)
+	if [[ -z "${latestSnapshotOnDest// }" ]]; then
 		return 0 # true
 	else
 		return 1 # false
@@ -156,8 +157,8 @@ for dataset in $datasets; do
 		Log "## No previous snapshots were found for the dataset $dataset. Executing first run."
 		Run "zfs send $sourcePool/$dataset@_$syncId_$currentTime | zfs receive $destPool/$dataset"
 	else
-		latestSnapshot=$(GetLatestSnapshot $dataset)
-		Run "zfs send -I $latestSnapshot $sourcePool/$dataset@_$syncId_$currentTime | zfs receive $destPool/$dataset"
+		latestSnapshotOnSource=$(GetLatestSnapshot "$sourceSnapshots" $dataset)
+		Run "zfs send -I $latestSnapshotOnSource $sourcePool/$dataset@_$syncId_$currentTime | zfs receive $destPool/$dataset"
 	fi
 done
 
