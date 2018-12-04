@@ -7,7 +7,22 @@ silent=false
 snapshotsToKeep=10
 
 Usage() { 
-	printf "\nUsage: $0 [parameters]\n\nRequired parameters:\n-s | --source => Name of source ZFS pool.\n-d | --destination => Name of ZFS pool to use as backup.\n\nOptional parameters:\n-D | --dry-run => Test run. Will output commands to console but won't do anything.\n-v | --verbose => Output to console and log file.\n-k | --keep-snapshots => Number of snapshots to keep. Default: $snapshotsToKeep Minimum: 1\n-vols | --datasets => Limits the sync to only the specified dataset(s). Must enter value(s) between quotes (and separated with spaces). Example: --datasets \"vm-1-disk-0 vm-1-disk-1\"\n\nExample: $0 -s source-pool -d dest-pool\n" 1>&2
+	printf "
+Usage: $0 [parameters]
+
+Required parameters:
+-s | --source => Name of source ZFS pool.
+-d | --destination => Name of ZFS pool to use as backup.
+
+Optional parameters:
+-D | --dry-run => Test run: outputs commands to console but won't run. (overrides silent and verbose modes)
+-S | --silent => Silent mode: only errors and warnings will be loged.
+-v | --verbose => Verbose mode: sends output also to console. (overrides silent mode)
+-k | --keep-snapshots => Number of snapshots to keep. Default: $snapshotsToKeep Minimum: 1
+-vols | --datasets => Limits the sync to only the specified dataset(s). Must enter value(s) between quotes (and separated with spaces). Example: --datasets \"vm-1-disk-0 vm-1-disk-1\"
+	
+Example: $0 -s source-pool -d dest-pool
+" 1>&2
 }
 
 ExitError() {
