@@ -22,8 +22,9 @@ Required parameters:
 * -d | --destination: Name of ZFS pool to use as backup.
 
 Optional parameters:
-* -D | --dry-run: Test run. Will output commands to console but won't do anything.
-* -v | --verbose: Outputs to console and log file.
+* -D | --dry-run => Test run: outputs commands to console but won't run. (overrides silent and verbose modes)
+* -S | --silent => Silent mode: only errors and warnings will be loged.
+* -v | --verbose => Verbose mode: sends output also to console. (overrides silent mode)
 * -k | --keep-snapshots: Number of snapshots to keep. Default: 10 Minimum: 1
 * -vols | --datasets: Limits the sync to only the specified dataset(s). Must enter value(s) between quotes (and separated with spaces). Example: --datasets "vm-1-disk-0 vm-1-disk-1"
 
@@ -48,14 +49,18 @@ For example to sync every 15 minutes:
 */15 * * * * root /bin/bash /root/zfs-local-sync.sh -s source_pool_name -d backup_pool_name
 ```
 
-If you want to duplicate multiple pools, one entry per source pool is required. The destination pool may be the same for both source pools (if it satisfies the requirements specified above) or different:
+To duplicate multiple pools, one entry per source pool is required. A single destination pool may be used for various source pools as long as it satisfies the requirements specified above (enough free space and non conflicting dataset names):
 ```
 */15 * * * * root /bin/bash /root/zfs-local-sync.sh -s source_pool_name -d backup_pool_name
 */15 * * * * root /bin/bash /root/zfs-local-sync.sh -s source_pool_name_2 -d backup_pool_name
 ```
 
 ### Logs & output
-By default the script will capture all output to a log file unless enabeling verbose or dry run. One log file will be created for every pool being backed up:
+By default the script will write the executed commands and any output to a log file. One log file will be created for every source pool:
 ```
 /var/log/zfs-local-sync/source_pool_name.log
 ```
+#### Special modes
+Dry run: nothing will be executed nor any log file will be created. Only the commands to be run will be shown on console.
+Verbose: commands and output will be go to both: log file and console.
+Silent: only warnings will be written to the log file.
