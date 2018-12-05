@@ -166,22 +166,21 @@ trap "rm -f -- '$pidFile'" EXIT
 echo $$ > "$pidFile"
 
 ## Begin script
-Log "Beginning pool sync @ $currentTime"
-
 if $dryRun; then
 	Log "This is a dry run! No pool will be modified."
 fi
+Log "Beginning pool sync @ $currentTime"
+
+# Get all pre-existing snapshots on source and destination pools sorted by creation date (oldest to newest)
+sourceSnapshots=`zfs list -t snapshot -o name -s creation | grep $sourcePool/.*$syncId`
+destSnapshots=`zfs list -t snapshot -o name -s creation | grep $destPool/.*$syncId`
 
 ## If no datasets were specified, get all existing datasets on source pool
 if [ -z $datasets ]; then
-	datasets=`zfs list | grep $sourcePool/ | awk '{print $1}' | tr "\n" " " | sed "s/$sourcePool\///g"`
+	datasets=`zfs list -o name | grep $sourcePool/ | sed "s/$sourcePool\///g"`
 fi
 
-# Get all existing snapshots on source and destination pools
-sourceSnapshots=`zfs list -t snapshot | grep $sourcePool/ | grep $syncId | awk '{print $1}'`
-destSnapshots=`zfs list -t snapshot | grep $destPool/ | grep $syncId | awk '{print $1}'`
-
-## Create snapshots on source pool to be sent
+## Create new snapshots on source pool
 for dataset in $datasets; do
 	Run "zfs snapshot $sourcePool/$dataset@$syncId$currentTime"
 done
@@ -190,7 +189,7 @@ done
 GetLatestSnapshot() {
 	snapshots=$1
 	dataset=$2
-	echo $snapshots | tr "[:space:]" "\n" | grep $dataset | tail -1 | xargs -n1 | tr "\n" " "
+	echo $sourceSnapshots | tr "[:space:]" "\n" | grep $dataset | tail -1
 }
 
 IsDatasetFirstRun() {
@@ -222,7 +221,7 @@ PurgeSnapshots() {
 	dataset=$2
 	existingSnapshots=`echo $snapshots | tr "[:space:]" "\n" | grep $dataset | tr "\n" " " | awk -F"@" '{print NF-1}'`
 	if [ $existingSnapshots -gt $snapshotsToKeep ]; then
-		toDelete=`echo $snapshots | tr "[:space:]" "\n" | grep $dataset | grep -m$((existingSnapshots-snapshotsToKeep)) ""`
+		toDelete=`echo $snapshots | tr "[:space:]" "\n" | grep $dataset -m$((existingSnapshots-snapshotsToKeep))`
 		for snapshot in $toDelete; do
 			if [[ $snapshot == *"@"* ]]; then
 				Run "zfs destroy $snapshot"
