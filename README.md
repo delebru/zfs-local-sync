@@ -61,6 +61,6 @@ By default the script will write the executed commands and any output to a log f
 /var/log/zfs-local-sync/source_pool_name.log
 ```
 #### Special modes
-Dry run: nothing will be executed nor any log file will be created. Only the commands to be run will be shown on console.
-Verbose: commands and output will be go to both: log file and console.
-Silent: only warnings will be written to the log file.
+* Dry run: nothing will be executed nor any log file will be created. Only the commands to be run will be shown on console.
+* Verbose: commands and output will be go to both: log file and console.
+* Silent: only warnings will be written to the log file.
