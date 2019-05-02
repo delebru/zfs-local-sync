@@ -46,13 +46,13 @@ After doing a dry run and confirming the script will do what you need, add an en
 
 For example to sync every 15 minutes:
 ```
-*/15 * * * * root /bin/bash /root/zfs-local-sync.sh -s source_pool_name -d backup_pool_name
+*/15 * * * * root /bin/bash /opt/zfs-local-sync/zfs-local-sync.sh -s source_pool_name -d backup_pool_name
 ```
 
 To duplicate multiple pools, one entry per source pool is required. A single destination pool may be used for various source pools as long as it satisfies the requirements specified above (enough free space and non conflicting dataset names):
 ```
-*/15 * * * * root /bin/bash /root/zfs-local-sync.sh -s source_pool_name -d backup_pool_name
-*/15 * * * * root /bin/bash /root/zfs-local-sync.sh -s source_pool_name_2 -d backup_pool_name
+*/15 * * * * root /bin/bash /opt/zfs-local-sync/zfs-local-sync.sh -s source_pool_name -d backup_pool_name
+*/15 * * * * root /bin/bash /opt/zfs-local-sync/zfs-local-sync.sh -s source_pool_name_2 -d backup_pool_name
 ```
 
 ### Logs & output
@@ -61,6 +61,6 @@ By default the script will write the executed commands and any output to a log f
 /var/log/zfs-local-sync/source_pool_name.log
 ```
 #### Special modes
-Dry run: nothing will be executed nor any log file will be created. Only the commands to be run will be shown on console.
-Verbose: commands and output will be go to both: log file and console.
-Silent: only warnings will be written to the log file.
+* Dry run: nothing will be executed nor any log file will be created. Only the commands to be run will be shown on console.
+* Verbose: commands and output will be go to both: log file and console.
+* Silent: only warnings will be written to the log file.
