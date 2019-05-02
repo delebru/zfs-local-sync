@@ -172,8 +172,8 @@ fi
 Log "Beginning pool sync @ $currentTime"
 
 # Get all pre-existing snapshots on source and destination pools sorted by creation date (oldest to newest)
-sourceSnapshots=`zfs list -t snapshot -o name -s creation | grep $sourcePool/.*$syncId`
-destSnapshots=`zfs list -t snapshot -o name -s creation | grep $destPool/.*$syncId`
+sourceSnapshots=`zfs list -t snapshot -o name -s creation 2> /dev/null | grep $sourcePool/.*$syncId`
+destSnapshots=`zfs list -t snapshot -o name -s creation 2> /dev/null | grep $destPool/.*$syncId`
 
 ## If no datasets were specified, get all existing datasets on source pool
 if [ -z $datasets ]; then
